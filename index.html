@@ -1,0 +1,1303 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Instagram DM 送信管理ツール</title>
+</head>
+<body>
+<style id="app-style">
+  :root {
+    --bg: #f5f6f8;
+    --surface: #ffffff;
+    --surface-2: #f0f1f4;
+    --border: #e2e4e9;
+    --text: #16181c;
+    --text-dim: #6b7280;
+    --accent: #d6336c;
+    --accent-dim: #f7d7e3;
+    --accent-ink: #ffffff;
+    --ok: #12805c;
+    --ok-bg: #e3f6ee;
+    --warn: #b7791f;
+    --warn-bg: #fef3d9;
+    --skip-bg: #eceef1;
+    --skip-ink: #6b7280;
+    --danger: #c0392b;
+    --shadow: 0 1px 2px rgba(16,18,20,0.06), 0 1px 8px rgba(16,18,20,0.04);
+    --radius: 10px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", "Yu Gothic", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #16181c;
+      --surface: #1f2126;
+      --surface-2: #26282f;
+      --border: #34363d;
+      --text: #eceef1;
+      --text-dim: #9aa0a8;
+      --accent: #f0679a;
+      --accent-dim: #40222f;
+      --accent-ink: #1a0a10;
+      --ok: #4fd6a5;
+      --ok-bg: #12362a;
+      --warn: #f0c264;
+      --warn-bg: #3a2f13;
+      --skip-bg: #2a2c32;
+      --skip-ink: #9aa0a8;
+      --danger: #ff6b5e;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 1px 8px rgba(0,0,0,0.2);
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 24px 20px 80px; }
+
+  header.top { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 6px; flex-wrap: wrap; gap: 8px; }
+  header.top h1 { font-size: 19px; margin: 0; }
+  .subtitle { color: var(--text-dim); font-size: 13px; margin: 0 0 20px; }
+
+  .sync-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px;
+    background: var(--surface-2); color: var(--text-dim); border: 1px solid var(--border);
+    margin-bottom: 14px;
+  }
+  .sync-badge.on { background: var(--ok-bg); color: var(--ok); border-color: transparent; }
+  .sync-badge.off { background: var(--warn-bg); color: var(--warn); border-color: transparent; }
+
+  .notice {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    font-size: 12.5px;
+    color: var(--text-dim);
+    margin-bottom: 20px;
+    line-height: 1.6;
+  }
+
+  /* Month tabs */
+  .month-bar {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    margin-bottom: 20px; padding-bottom: 2px;
+  }
+  .month-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+  .month-tab {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text-dim); font-size: 12.5px;
+    cursor: pointer; font-weight: 600;
+  }
+  .month-tab .count {
+    font-size: 10.5px; font-weight: 700; padding: 1px 6px; border-radius: 999px;
+    background: var(--surface-2); color: var(--text-dim);
+  }
+  .month-tab.active { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .month-tab.active .count { background: rgba(255,255,255,0.25); color: var(--accent-ink); }
+  .month-add-btn {
+    padding: 6px 12px; border-radius: 999px; border: 1px dashed var(--border);
+    background: transparent; color: var(--text-dim); font-size: 12.5px; cursor: pointer;
+  }
+  .month-tools { display: flex; gap: 6px; margin-left: auto; }
+
+  .stats { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 22px; }
+  .stat {
+    flex: 1 1 120px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    box-shadow: var(--shadow);
+  }
+  .stat .num { font-size: 22px; font-weight: 700; line-height: 1.2; }
+  .stat .label { font-size: 11.5px; color: var(--text-dim); margin-top: 2px; }
+  .stat.pending .num { color: var(--warn); }
+  .stat.sent .num { color: var(--text); }
+  .stat.replied .num { color: var(--ok); }
+
+  .grid { display: grid; grid-template-columns: 300px 1fr; gap: 20px; align-items: start; }
+  @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 16px;
+  }
+  .panel h2 { font-size: 13.5px; margin: 0 0 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .panel h2 .sub { font-size: 11px; font-weight: 500; color: var(--text-dim); }
+  .panel + .panel { margin-top: 20px; }
+
+  label { display: block; font-size: 12px; color: var(--text-dim); margin: 10px 0 4px; }
+  label:first-child { margin-top: 0; }
+  input[type=text], textarea, select {
+    width: 100%;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 13px;
+    font-family: inherit;
+    resize: vertical;
+  }
+  textarea { min-height: 64px; line-height: 1.5; }
+  input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  button {
+    font-family: inherit;
+    font-size: 12.5px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--text);
+    padding: 7px 12px;
+    cursor: pointer;
+  }
+  button:hover { filter: brightness(0.97); }
+  @media (prefers-color-scheme: dark) { button:hover { filter: brightness(1.15); } }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+  button.ghost { background: transparent; }
+  button.small { padding: 4px 8px; font-size: 11.5px; }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  .tpl-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+  .tpl-item { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; background: var(--surface-2); }
+  .tpl-item.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+  .tpl-item .tpl-title { font-size: 12.5px; font-weight: 600; display: flex; justify-content: space-between; gap: 6px; }
+  .tpl-item .tpl-body { font-size: 11.5px; color: var(--text-dim); margin-top: 4px; white-space: pre-wrap; }
+  .tpl-item .tpl-actions { margin-top: 6px; display: flex; gap: 6px; }
+
+  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+  .toolbar input[type=text] { width: auto; flex: 1 1 200px; }
+  .toolbar select { width: auto; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  thead th {
+    text-align: left; font-weight: 600; color: var(--text-dim);
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em;
+    padding: 6px 8px; border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; background: var(--surface);
+  }
+  tbody td { padding: 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tbody tr:last-child td { border-bottom: none; }
+  .uname { font-weight: 600; }
+  .uname .at { color: var(--text-dim); font-weight: 400; }
+  .dname, .notes-cell { color: var(--text-dim); font-size: 12px; }
+  .msg-preview {
+    font-size: 12px; color: var(--text-dim); max-width: 200px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    cursor: pointer; border-bottom: 1px dotted var(--border); padding-bottom: 1px;
+  }
+  .msg-preview.expanded {
+    white-space: pre-wrap; overflow: visible; text-overflow: unset;
+    max-width: 260px; border-bottom: none; cursor: default;
+  }
+  .row-actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+
+  .badge {
+    display: inline-block; font-size: 11px; font-weight: 600;
+    padding: 2px 8px; border-radius: 999px;
+  }
+  .badge.pending { background: var(--warn-bg); color: var(--warn); }
+  .badge.sent { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
+  .badge.replied { background: var(--ok-bg); color: var(--ok); }
+  .badge.skip { background: var(--skip-bg); color: var(--skip-ink); }
+
+  .empty { text-align: center; color: var(--text-dim); padding: 40px 20px; font-size: 13px; }
+
+  .table-scroll { overflow-x: auto; }
+
+  .import-box { display: flex; flex-direction: column; gap: 8px; }
+  .hint { font-size: 11px; color: var(--text-dim); }
+  .filechip { display: none; }
+
+  .toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    background: var(--text); color: var(--bg); padding: 8px 16px;
+    border-radius: 999px; font-size: 12.5px; box-shadow: var(--shadow);
+    opacity: 0; pointer-events: none; transition: opacity 0.2s ease, transform 0.2s ease;
+    max-width: 90vw; text-align: center;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(-4px); }
+
+  /* Custom confirm/prompt modal — native confirm()/prompt() can be blocked inside a
+     sandboxed artifact frame, so this replaces them entirely. */
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(16,18,20,0.45);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 1000; padding: 20px;
+  }
+  .modal-box {
+    background: var(--surface); border-radius: var(--radius);
+    border: 1px solid var(--border); box-shadow: var(--shadow);
+    padding: 18px; max-width: 360px; width: 100%;
+  }
+  .modal-msg { font-size: 13px; line-height: 1.6; margin: 0 0 12px; white-space: pre-wrap; }
+  .modal-input {
+    width: 100%; border: 1px solid var(--border); background: var(--surface-2);
+    color: var(--text); border-radius: 8px; padding: 8px 10px; font-size: 13px;
+    font-family: inherit; margin-bottom: 14px;
+  }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+  /* View switcher (送信リスト / KPI実績) */
+  .view-switch { display: flex; gap: 8px; margin-bottom: 20px; }
+  .view-btn {
+    padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--surface); cursor: pointer; font-weight: 600; font-size: 13px;
+    color: var(--text-dim);
+  }
+  .view-btn.active { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+
+  /* KPI table */
+  .kpi-toolbar { display: flex; justify-content: flex-end; margin-bottom: 14px; }
+  .kpi-month + .kpi-month { margin-top: 20px; }
+  .kpi-month h2 { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .kpi-hint { font-size: 11px; color: var(--text-dim); margin: -6px 0 12px; }
+  .kpi-table { font-size: 11px; border-collapse: collapse; }
+  .kpi-table th, .kpi-table td {
+    padding: 3px 4px; text-align: center; border: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .kpi-table thead th { background: var(--surface); font-weight: 600; color: var(--text-dim); }
+  .kpi-rowlabel {
+    text-align: left; font-weight: 600; min-width: 90px;
+    position: sticky; left: 0; background: var(--surface-2);
+  }
+  .kpi-table input[type=number] {
+    width: 40px; padding: 2px 0; font-size: 11px; text-align: center;
+    border: 1px solid transparent; background: transparent; color: var(--text);
+  }
+  .kpi-table input[type=number]:focus { border-color: var(--accent); background: var(--surface); outline: none; }
+  .kpi-carry input, .kpi-target input { width: 48px; }
+  .kpi-day.auto { color: var(--text-dim); background: var(--surface-2); font-weight: 600; }
+  .kpi-total { font-weight: 700; background: var(--surface-2); }
+  .kpi-empty { text-align: center; color: var(--text-dim); padding: 30px; }
+
+  /* ---------- Mobile: bigger touch targets + card-style list ---------- */
+  @media (max-width: 700px) {
+    .wrap { padding: 16px 12px 90px; }
+
+    /* Prevent iOS Safari auto-zoom on focus (needs >=16px font) */
+    input[type=text], textarea, select { font-size: 16px; padding: 10px 12px; }
+
+    button { padding: 10px 14px; font-size: 13.5px; min-height: 40px; }
+    button.small { padding: 8px 12px; min-height: 36px; }
+    .month-tab { padding: 9px 14px; min-height: 40px; }
+    .badge { padding: 5px 10px; }
+
+    .toolbar { flex-direction: column; align-items: stretch; }
+    .toolbar input[type=text], .toolbar select { width: 100%; flex: none; }
+
+    /* Table -> stacked cards */
+    .table-scroll { overflow-x: visible; }
+    table, thead, tbody, tr, td { display: block; width: 100%; }
+    thead { display: none; }
+    tbody tr {
+      border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 12px; margin-bottom: 12px; background: var(--surface-2);
+    }
+    tbody tr:last-child { margin-bottom: 0; }
+    tbody td { border-bottom: none; padding: 8px 0; }
+    tbody td:not(:last-child) { border-bottom: 1px dashed var(--border); }
+    tbody td::before {
+      content: attr(data-label);
+      display: block; font-size: 10.5px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.03em;
+      color: var(--text-dim); margin-bottom: 6px;
+    }
+    .msg-preview { max-width: 100%; }
+    .msg-preview.expanded { max-width: 100%; }
+    .row-actions { justify-content: flex-start; }
+    .row-actions select { flex: 1 1 auto; }
+  }
+</style>
+<div class="wrap">
+  <header class="top">
+    <h1>📋 Instagram DM 送信管理ツール</h1>
+    <button class="ghost small" id="resetBtn">全データを削除</button>
+  </header>
+  <p class="subtitle">月ごとにリストを分けて、送信リストとテンプレートを管理します（実際のDM送信はInstagram上で手動）。</p>
+  <span class="sync-badge" id="syncBadge">確認中…</span>
+
+  <div class="notice">
+    ⚠️ このツールは自動送信を行いません。「Instagramで開く」で対象ユーザーのDM画面を開き、コピーした文面を<b>手動で</b>貼り付けて送信してください。短時間に大量送信するとスパム判定・アカウント制限のリスクがあるため、送信間隔を空けることをおすすめします。
+  </div>
+
+  <div class="view-switch">
+    <button class="view-btn active" id="viewBtnContacts" data-view="contacts">📋 送信リスト</button>
+    <button class="view-btn" id="viewBtnKpi" data-view="kpi">📊 KPI実績</button>
+  </div>
+
+  <div id="viewContacts">
+  <div class="month-bar">
+    <div class="month-tabs" id="monthTabs"></div>
+    <button class="month-add-btn" id="addMonthBtn">＋ 新しい月</button>
+    <div class="month-tools">
+      <button class="ghost small" id="renameMonthBtn">この月の名前を変更</button>
+      <button class="ghost small" id="deleteMonthBtn">この月を削除</button>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="num" id="statTotal">0</div><div class="label">対象合計</div></div>
+    <div class="stat pending"><div class="num" id="statPending">0</div><div class="label">未送信</div></div>
+    <div class="stat sent"><div class="num" id="statSent">0</div><div class="label">送信済み</div></div>
+    <div class="stat replied"><div class="num" id="statReplied">0</div><div class="label">返信あり</div></div>
+  </div>
+
+  <div class="grid">
+    <!-- Left column: templates + import -->
+    <div>
+      <div class="panel">
+        <h2>メッセージテンプレート <span class="sub">全ての月で共有</span></h2>
+        <div class="tpl-list" id="tplList"></div>
+        <label>タイトル</label>
+        <input type="text" id="tplTitle" placeholder="例: 初回アウトリーチ">
+        <label>本文（<code>{{name}}</code> で表示名に置換）</label>
+        <textarea id="tplBody" placeholder="はじめまして、{{name}}さん。..."></textarea>
+        <div style="display:flex; gap:8px; margin-top:10px;">
+          <button class="primary" id="tplSaveBtn" style="flex:1;">テンプレートを追加</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>連絡先を追加 <span class="sub" id="addTargetLabel"></span></h2>
+        <label>ユーザー名 または プロフィールURL</label>
+        <input type="text" id="addUsername" placeholder="instagram_user または https://instagram.com/instagram_user">
+        <label>表示名（任意）</label>
+        <input type="text" id="addName" placeholder="山田さん">
+        <label>担当者（任意）</label>
+        <input type="text" id="addAssignee" placeholder="例: 佐藤">
+        <label>メモ（任意）</label>
+        <input type="text" id="addNotes" placeholder="">
+        <button class="primary" id="addBtn" style="width:100%; margin-top:10px;">追加</button>
+      </div>
+
+      <div class="panel">
+        <h2>一括インポート <span class="sub" id="importTargetLabel"></span></h2>
+        <div class="import-box">
+          <div class="hint">CSV形式: <code>username,display_name,notes,assignee</code>（1行1件、ヘッダー行は任意。usernameはプロフィールURLでも可。カンマを含む値は非対応）</div>
+          <textarea id="importText" placeholder="user1,山田さん,展示会で名刺交換,佐藤&#10;user2,,,"></textarea>
+          <div style="display:flex; gap:8px;">
+            <button id="importTextBtn" style="flex:1;">テキストから読込</button>
+            <label class="filechip"><input type="file" id="importFile" accept=".csv,text/csv"></label>
+            <button id="importFileBtn" style="flex:1;">CSVファイルを選択</button>
+          </div>
+          <button class="ghost" id="exportBtn">この月をCSVでエクスポート</button>
+          <button class="ghost" id="exportAllBtn">全月をCSVでエクスポート</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right column: contact table -->
+    <div class="panel">
+      <h2 id="listTitle">送信リスト</h2>
+      <div class="toolbar">
+        <input type="text" id="searchBox" placeholder="ユーザー名・表示名・メモ・担当者で検索">
+        <select id="filterStatus">
+          <option value="all">すべてのステータス</option>
+          <option value="pending">未送信</option>
+          <option value="sent">送信済み</option>
+          <option value="replied">返信あり</option>
+          <option value="skip">対象外</option>
+        </select>
+        <select id="filterAssignee">
+          <option value="all">すべての担当者</option>
+        </select>
+        <select id="tplAssignAll">
+          <option value="">一括適用テンプレート...</option>
+        </select>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:130px;">ユーザー名</th>
+              <th style="width:100px;">表示名</th>
+              <th style="width:100px;">担当者</th>
+              <th style="width:210px;">テンプレート</th>
+              <th style="width:90px;">ステータス</th>
+              <th style="width:230px;">操作</th>
+            </tr>
+          </thead>
+          <tbody id="contactBody"></tbody>
+        </table>
+        <div class="empty" id="emptyState" style="display:none;"></div>
+      </div>
+    </div>
+  </div>
+  </div>
+
+  <div id="viewKpi" style="display:none">
+    <div class="kpi-toolbar">
+      <button class="month-add-btn" id="addKpiMonthBtn">＋ 新しい月を追加</button>
+    </div>
+    <p class="kpi-hint">DM送信数・DM返信数は送信リストでステータスを変更した日から自動集計されます。制作数・有料案件獲得数・先月持越・月間目標数は手入力してください。</p>
+    <div id="kpiMonths"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+var firebaseConfig = {
+  apiKey: "AIzaSyDyzAwjeRCaPlG8adJH-I01C3QUFdYeagU",
+  authDomain: "instagram-dm-b165d.firebaseapp.com",
+  projectId: "instagram-dm-b165d",
+  storageBucket: "instagram-dm-b165d.firebasestorage.app",
+  messagingSenderId: "169967582732",
+  appId: "1:169967582732:web:6ecc4461c6889799d37829",
+  measurementId: "G-JZTMFEFVS6"
+};
+var fbApp = initializeApp(firebaseConfig);
+var fbDb = getFirestore(fbApp);
+var fbStateRef = doc(fbDb, "dmManager", "state");
+var fbGetDoc = getDoc, fbSetDoc = setDoc, fbOnSnapshot = onSnapshot;
+
+(function () {
+  var STORE_KEY = 'ig_dm_manager_v2';
+  var OLD_STORE_KEY = 'ig_dm_manager_v1';
+
+  function cryptoId() {
+    return 'id_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+  }
+
+  function currentMonthLabel() {
+    var d = new Date();
+    return d.getFullYear() + '年' + (d.getMonth() + 1) + '月';
+  }
+
+  function freshDefaultTemplates() {
+    return [{ id: cryptoId(), title: 'デフォルト', body: 'はじめまして、{{name}}さん！突然のご連絡失礼します。' }];
+  }
+
+  function freshMonth(label) {
+    return { id: cryptoId(), label: label || currentMonthLabel(), createdAt: new Date().toISOString(), contacts: [] };
+  }
+
+  function buildDefaultState() {
+    var fresh = { months: [freshMonth()], activeMonthId: null, templates: freshDefaultTemplates(), kpi: { months: {} } };
+    fresh.activeMonthId = fresh.months[0].id;
+    return fresh;
+  }
+
+  function normalizeState(parsed) {
+    if (!parsed || !Array.isArray(parsed.months) || !parsed.months.length) return null;
+    if (!parsed.templates || !parsed.templates.length) parsed.templates = freshDefaultTemplates();
+    if (!parsed.activeMonthId || !parsed.months.some(function (m) { return m.id === parsed.activeMonthId; })) {
+      parsed.activeMonthId = parsed.months[0].id;
+    }
+    if (!parsed.kpi || typeof parsed.kpi !== 'object') parsed.kpi = { months: {} };
+    if (!parsed.kpi.months || typeof parsed.kpi.months !== 'object') parsed.kpi.months = {};
+    // Backfill statusLog for contacts saved before KPI tracking existed, so a contact
+    // already marked sent/replied still counts toward SOME day's total (best-effort: uses
+    // its last-known updatedAt, since earlier transitions were never recorded).
+    parsed.months.forEach(function (m) {
+      m.contacts.forEach(function (c) {
+        if (!Array.isArray(c.statusLog)) c.statusLog = [];
+        if (!c.statusLog.length && (c.status === 'sent' || c.status === 'replied')) {
+          c.statusLog.push({ status: c.status, at: c.updatedAt || new Date().toISOString() });
+        }
+      });
+    });
+    return parsed;
+  }
+
+  // Used only if Firestore has no document yet (brand-new setup, or offline on first load).
+  function loadLocalFallback() {
+    try {
+      var raw = localStorage.getItem(STORE_KEY);
+      if (raw) {
+        var fromLocal = normalizeState(JSON.parse(raw));
+        if (fromLocal) return fromLocal;
+      }
+    } catch (e) { /* fall through */ }
+    try {
+      var oldRaw = localStorage.getItem(OLD_STORE_KEY);
+      if (oldRaw) {
+        var old = JSON.parse(oldRaw);
+        if (old && Array.isArray(old.contacts)) {
+          var month = freshMonth('移行データ');
+          month.contacts = old.contacts;
+          var templates = (old.templates && old.templates.length) ? old.templates : freshDefaultTemplates();
+          return normalizeState({ months: [month], activeMonthId: month.id, templates: templates, kpi: { months: {} } });
+        }
+      }
+    } catch (e) { /* fall through */ }
+    return null;
+  }
+
+  var state = null;
+  var editingTplId = null;
+
+  function activeMonth() {
+    return state.months.find(function (m) { return m.id === state.activeMonthId; }) || state.months[0];
+  }
+
+  // ---------- Elements ----------
+  var el = {
+    monthTabs: document.getElementById('monthTabs'),
+    addMonthBtn: document.getElementById('addMonthBtn'),
+    renameMonthBtn: document.getElementById('renameMonthBtn'),
+    deleteMonthBtn: document.getElementById('deleteMonthBtn'),
+    addTargetLabel: document.getElementById('addTargetLabel'),
+    importTargetLabel: document.getElementById('importTargetLabel'),
+    listTitle: document.getElementById('listTitle'),
+    tplList: document.getElementById('tplList'),
+    tplTitle: document.getElementById('tplTitle'),
+    tplBody: document.getElementById('tplBody'),
+    tplSaveBtn: document.getElementById('tplSaveBtn'),
+    addUsername: document.getElementById('addUsername'),
+    addName: document.getElementById('addName'),
+    addAssignee: document.getElementById('addAssignee'),
+    addNotes: document.getElementById('addNotes'),
+    addBtn: document.getElementById('addBtn'),
+    importText: document.getElementById('importText'),
+    importTextBtn: document.getElementById('importTextBtn'),
+    importFile: document.getElementById('importFile'),
+    importFileBtn: document.getElementById('importFileBtn'),
+    exportBtn: document.getElementById('exportBtn'),
+    exportAllBtn: document.getElementById('exportAllBtn'),
+    searchBox: document.getElementById('searchBox'),
+    filterStatus: document.getElementById('filterStatus'),
+    filterAssignee: document.getElementById('filterAssignee'),
+    tplAssignAll: document.getElementById('tplAssignAll'),
+    contactBody: document.getElementById('contactBody'),
+    emptyState: document.getElementById('emptyState'),
+    statTotal: document.getElementById('statTotal'),
+    statPending: document.getElementById('statPending'),
+    statSent: document.getElementById('statSent'),
+    statReplied: document.getElementById('statReplied'),
+    resetBtn: document.getElementById('resetBtn'),
+    toast: document.getElementById('toast'),
+    syncBadge: document.getElementById('syncBadge'),
+    viewBtnContacts: document.getElementById('viewBtnContacts'),
+    viewBtnKpi: document.getElementById('viewBtnKpi'),
+    viewContacts: document.getElementById('viewContacts'),
+    viewKpi: document.getElementById('viewKpi'),
+    kpiMonths: document.getElementById('kpiMonths'),
+    addKpiMonthBtn: document.getElementById('addKpiMonthBtn'),
+  };
+
+  function showToast(msg) {
+    el.toast.textContent = msg;
+    el.toast.classList.add('show');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(function () { el.toast.classList.remove('show'); }, 1800);
+  }
+
+  // ---------- Custom confirm/prompt (native window.confirm/prompt can be silently
+  // blocked inside a sandboxed artifact frame — these replace them everywhere) ----------
+  function modalHost() {
+    var host = document.getElementById('modalHost');
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'modalHost';
+      document.body.appendChild(host);
+    }
+    return host;
+  }
+
+  function customConfirm(message) {
+    return new Promise(function (resolve) {
+      var host = modalHost();
+      host.innerHTML =
+        '<div class="modal-backdrop"><div class="modal-box">' +
+        '<p class="modal-msg"></p>' +
+        '<div class="modal-actions">' +
+        '<button class="ghost small modal-cancel">キャンセル</button>' +
+        '<button class="primary small modal-ok">OK</button>' +
+        '</div></div></div>';
+      host.querySelector('.modal-msg').textContent = message;
+      var backdrop = host.querySelector('.modal-backdrop');
+      function close(result) { host.innerHTML = ''; resolve(result); }
+      host.querySelector('.modal-cancel').addEventListener('click', function () { close(false); });
+      host.querySelector('.modal-ok').addEventListener('click', function () { close(true); });
+      backdrop.addEventListener('click', function (e) { if (e.target === backdrop) close(false); });
+    });
+  }
+
+  function customPrompt(message, defaultValue) {
+    return new Promise(function (resolve) {
+      var host = modalHost();
+      host.innerHTML =
+        '<div class="modal-backdrop"><div class="modal-box">' +
+        '<p class="modal-msg"></p>' +
+        '<input type="text" class="modal-input">' +
+        '<div class="modal-actions">' +
+        '<button class="ghost small modal-cancel">キャンセル</button>' +
+        '<button class="primary small modal-ok">OK</button>' +
+        '</div></div></div>';
+      host.querySelector('.modal-msg').textContent = message;
+      var input = host.querySelector('.modal-input');
+      input.value = defaultValue || '';
+      var backdrop = host.querySelector('.modal-backdrop');
+      function close(result) { host.innerHTML = ''; resolve(result); }
+      host.querySelector('.modal-cancel').addEventListener('click', function () { close(null); });
+      host.querySelector('.modal-ok').addEventListener('click', function () { close(input.value); });
+      input.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') close(input.value);
+        else if (e.key === 'Escape') close(null);
+      });
+      backdrop.addEventListener('click', function (e) { if (e.target === backdrop) close(null); });
+      setTimeout(function () { input.focus(); input.select(); }, 0);
+    });
+  }
+
+  function escapeHtml(s) {
+    return String(s || '').replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function renderMessage(tpl, contact) {
+    if (!tpl) return '';
+    var name = contact.name || contact.username;
+    return tpl.body.replace(/\{\{\s*name\s*\}\}/gi, name);
+  }
+
+  // ---------- Cloud sync (Firebase Firestore) ----------
+  // One shared document (dmManager/state) holds the entire app state. Every save writes the
+  // whole document; onSnapshot listens for changes from ANY device/tab and re-renders live —
+  // no page reload needed, unlike the earlier Claude Artifact version.
+  function setSyncBadge(mode) {
+    if (!el.syncBadge) return;
+    el.syncBadge.classList.remove('on', 'off');
+    if (mode === 'on') { el.syncBadge.classList.add('on'); el.syncBadge.textContent = '☁️ 自動同期 有効'; }
+    else if (mode === 'off') { el.syncBadge.classList.add('off'); el.syncBadge.textContent = '⚠️ 同期に失敗（ネットワークをご確認ください）'; }
+    else { el.syncBadge.textContent = '接続中…'; }
+  }
+
+  function saveState() {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
+    fbSetDoc(fbStateRef, state).then(function () {
+      setSyncBadge('on');
+    }).catch(function (err) {
+      setSyncBadge('off');
+      showToast('保存に失敗しました。ネットワーク接続をご確認ください');
+    });
+  }
+
+  // ---------- Month tabs ----------
+  function monthTabsHtml() {
+    return state.months.map(function (m) {
+      return '<button class="month-tab' + (m.id === state.activeMonthId ? ' active' : '') + '" data-id="' + m.id + '">' +
+        '<span>' + escapeHtml(m.label) + '</span><span class="count">' + m.contacts.length + '</span></button>';
+    }).join('');
+  }
+
+  function renderMonthTabs() {
+    el.monthTabs.innerHTML = monthTabsHtml();
+    el.deleteMonthBtn.disabled = state.months.length <= 1;
+
+    var label = activeMonth().label;
+    el.addTargetLabel.textContent = '→ ' + label;
+    el.importTargetLabel.textContent = '→ ' + label;
+    el.listTitle.textContent = '送信リスト（' + label + '）';
+    el.emptyState.textContent = '「' + label + '」にはまだ連絡先がありません。左のフォームから追加するか、CSVをインポートしてください。';
+  }
+
+  el.monthTabs.addEventListener('click', function (e) {
+    var tab = e.target.closest('.month-tab');
+    if (!tab) return;
+    state.activeMonthId = tab.dataset.id;
+    saveState(); renderAll();
+  });
+
+  el.addMonthBtn.addEventListener('click', function () {
+    var suggestion = currentMonthLabel();
+    customPrompt('新しい月の名前を入力してください（例: 2026年9月）', suggestion).then(function (label) {
+      if (label === null) return;
+      var trimmed = label.trim();
+      if (!trimmed) { showToast('名前を入力してください'); return; }
+      var month = freshMonth(trimmed);
+      state.months.push(month);
+      state.activeMonthId = month.id;
+      saveState(); renderAll();
+      showToast('「' + trimmed + '」を追加しました');
+    });
+  });
+
+  el.renameMonthBtn.addEventListener('click', function () {
+    var m = activeMonth();
+    customPrompt('月の名前を変更', m.label).then(function (label) {
+      if (label === null) return;
+      var trimmed = label.trim();
+      if (!trimmed) { showToast('名前を入力してください'); return; }
+      m.label = trimmed;
+      saveState(); renderAll();
+    });
+  });
+
+  el.deleteMonthBtn.addEventListener('click', function () {
+    if (state.months.length <= 1) return;
+    var m = activeMonth();
+    customConfirm('「' + m.label + '」を削除します（連絡先 ' + m.contacts.length + '件も削除されます）。よろしいですか？').then(function (ok) {
+      if (!ok) return;
+      state.months = state.months.filter(function (x) { return x.id !== m.id; });
+      state.activeMonthId = state.months[0].id;
+      saveState(); renderAll();
+      showToast('削除しました');
+    });
+  });
+
+  // ---------- Templates (shared across months) ----------
+  function tplListHtml(editId) {
+    return state.templates.map(function (t) {
+      return '<div class="tpl-item' + (editId === t.id ? ' active' : '') + '">' +
+        '<div class="tpl-title"><span>' + escapeHtml(t.title) + '</span></div>' +
+        '<div class="tpl-body">' + escapeHtml(t.body) + '</div>' +
+        '<div class="tpl-actions">' +
+        '<button class="small" data-act="edit" data-id="' + t.id + '">編集</button>' +
+        '<button class="small ghost" data-act="del" data-id="' + t.id + '"' + (state.templates.length <= 1 ? ' disabled' : '') + '>削除</button>' +
+        '</div></div>';
+    }).join('');
+  }
+
+  function renderTemplates() {
+    el.tplList.innerHTML = tplListHtml(editingTplId);
+    el.tplAssignAll.innerHTML = '<option value="">一括適用テンプレート...</option>' +
+      state.templates.map(function (t) { return '<option value="' + t.id + '">' + escapeHtml(t.title) + '</option>'; }).join('');
+  }
+
+  el.tplList.addEventListener('click', function (e) {
+    var btn = e.target.closest('button');
+    if (!btn) return;
+    var id = btn.dataset.id;
+    var tpl = state.templates.find(function (t) { return t.id === id; });
+    if (btn.dataset.act === 'edit') {
+      editingTplId = id;
+      el.tplTitle.value = tpl.title;
+      el.tplBody.value = tpl.body;
+      el.tplSaveBtn.textContent = 'テンプレートを更新';
+      renderTemplates();
+    } else if (btn.dataset.act === 'del') {
+      if (state.templates.length <= 1) return;
+      customConfirm('テンプレート「' + tpl.title + '」を削除しますか？').then(function (ok) {
+        if (!ok) return;
+        state.templates = state.templates.filter(function (t) { return t.id !== id; });
+        state.months.forEach(function (m) { m.contacts.forEach(function (c) { if (c.tplId === id) c.tplId = state.templates[0].id; }); });
+        if (editingTplId === id) { editingTplId = null; el.tplTitle.value = ''; el.tplBody.value = ''; el.tplSaveBtn.textContent = 'テンプレートを追加'; }
+        saveState(); renderTemplates(); renderContacts();
+      });
+    }
+  });
+
+  el.tplSaveBtn.addEventListener('click', function () {
+    var title = el.tplTitle.value.trim();
+    var body = el.tplBody.value.trim();
+    if (!title || !body) { showToast('タイトルと本文を入力してください'); return; }
+    if (editingTplId) {
+      var tpl = state.templates.find(function (t) { return t.id === editingTplId; });
+      tpl.title = title; tpl.body = body;
+      editingTplId = null;
+      el.tplSaveBtn.textContent = 'テンプレートを追加';
+    } else {
+      state.templates.push({ id: cryptoId(), title: title, body: body });
+    }
+    el.tplTitle.value = ''; el.tplBody.value = '';
+    saveState(); renderTemplates(); renderContacts();
+    showToast('テンプレートを保存しました');
+  });
+
+  // ---------- Add contact (into active month) ----------
+  // Accepts either a bare username ("user", "@user") or an Instagram profile URL
+  // (e.g. "https://www.instagram.com/user/?hl=en") and returns just the username.
+  var IG_RESERVED_PATHS = ['p', 'reel', 'reels', 'stories', 'explore', 'accounts', 'direct', 'tv', 'about'];
+  function extractUsername(input) {
+    input = (input || '').trim();
+    if (!input) return '';
+    var candidate = null;
+    if (/^https?:\/\//i.test(input)) {
+      candidate = input;
+    } else if (/^(www\.)?instagram\.com\//i.test(input)) {
+      candidate = 'https://' + input;
+    }
+    if (candidate) {
+      try {
+        var u = new URL(candidate);
+        if (/(^|\.)instagram\.com$/i.test(u.hostname)) {
+          var seg = u.pathname.replace(/^\/+|\/+$/g, '').split('/')[0];
+          if (seg && IG_RESERVED_PATHS.indexOf(seg.toLowerCase()) === -1) {
+            return seg;
+          }
+        }
+      } catch (e) { /* not a valid URL — fall through to plain-username handling */ }
+    }
+    return input.replace(/^@/, '');
+  }
+
+  function addContact(username, name, notes, assignee) {
+    username = extractUsername(username);
+    if (!username) return false;
+    var month = activeMonth();
+    if (month.contacts.some(function (c) { return c.username.toLowerCase() === username.toLowerCase(); })) {
+      return 'dup';
+    }
+    month.contacts.push({
+      id: cryptoId(),
+      username: username,
+      name: (name || '').trim(),
+      notes: (notes || '').trim(),
+      assignee: (assignee || '').trim(),
+      status: 'pending',
+      tplId: state.templates[0].id,
+      updatedAt: null,
+      statusLog: [],
+    });
+    return true;
+  }
+
+  el.addBtn.addEventListener('click', function () {
+    var result = addContact(el.addUsername.value, el.addName.value, el.addNotes.value, el.addAssignee.value);
+    if (result === 'dup') { showToast('この月に既に登録済みのユーザー名です'); return; }
+    if (!result) { showToast('ユーザー名を入力してください'); return; }
+    el.addUsername.value = ''; el.addName.value = ''; el.addNotes.value = ''; el.addAssignee.value = '';
+    saveState(); renderAll();
+    showToast('連絡先を追加しました');
+  });
+
+  // ---------- Import / Export ----------
+  // CSV columns: username,display_name,notes,assignee (simple splitter; commas inside a field are not supported)
+  function parseCsv(text) {
+    var lines = text.split(/\r?\n/).map(function (l) { return l.trim(); }).filter(Boolean);
+    var added = 0, dup = 0;
+    lines.forEach(function (line) {
+      var parts = line.split(',').map(function (p) { return p.trim(); });
+      if (/^username$/i.test(parts[0])) return; // skip header
+      var r = addContact(parts[0], parts[1], parts[2], parts[3]);
+      if (r === true) added++; else if (r === 'dup') dup++;
+    });
+    return { added: added, dup: dup };
+  }
+
+  el.importTextBtn.addEventListener('click', function () {
+    if (!el.importText.value.trim()) { showToast('テキストを入力してください'); return; }
+    var result = parseCsv(el.importText.value);
+    saveState(); renderAll();
+    el.importText.value = '';
+    showToast(result.added + '件追加（重複' + result.dup + '件スキップ）');
+  });
+
+  el.importFileBtn.addEventListener('click', function () { el.importFile.click(); });
+  el.importFile.addEventListener('change', function () {
+    var file = el.importFile.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      var result = parseCsv(String(reader.result));
+      saveState(); renderAll();
+      showToast(result.added + '件追加（重複' + result.dup + '件スキップ）');
+      el.importFile.value = '';
+    };
+    reader.readAsText(file, 'utf-8');
+  });
+
+  function downloadCsv(rows, filename) {
+    var csv = rows.map(function (r) {
+      return r.map(function (v) { return '"' + String(v || '').replace(/"/g, '""') + '"'; }).join(',');
+    }).join('\n');
+    var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  el.exportBtn.addEventListener('click', function () {
+    var m = activeMonth();
+    var header = ['username', 'display_name', 'notes', 'assignee', 'status', 'updated_at'];
+    var rows = m.contacts.map(function (c) { return [c.username, c.name, c.notes, c.assignee, c.status, c.updatedAt || '']; });
+    downloadCsv([header].concat(rows), 'instagram_dm_' + m.label + '_' + new Date().toISOString().slice(0, 10) + '.csv');
+  });
+
+  el.exportAllBtn.addEventListener('click', function () {
+    var header = ['month', 'username', 'display_name', 'notes', 'assignee', 'status', 'updated_at'];
+    var rows = [];
+    state.months.forEach(function (m) {
+      m.contacts.forEach(function (c) { rows.push([m.label, c.username, c.name, c.notes, c.assignee, c.status, c.updatedAt || '']); });
+    });
+    downloadCsv([header].concat(rows), 'instagram_dm_all_months_' + new Date().toISOString().slice(0, 10) + '.csv');
+  });
+
+  // ---------- Contact list rendering ----------
+  var statusLabel = { pending: '未送信', sent: '送信済み', replied: '返信あり', skip: '対象外' };
+
+  function contactRowHtml(c) {
+    var tpl = state.templates.find(function (t) { return t.id === c.tplId; }) || state.templates[0];
+    var msg = renderMessage(tpl, c);
+    var tplOptions = state.templates.map(function (t) {
+      return '<option value="' + t.id + '"' + (t.id === c.tplId ? ' selected' : '') + '>' + escapeHtml(t.title) + '</option>';
+    }).join('');
+    return '<tr>' +
+      '<td data-label="ユーザー名"><div class="uname"><span class="at">@</span>' + escapeHtml(c.username) + '</div>' +
+      '<div class="notes-cell">' + escapeHtml(c.notes) + '</div></td>' +
+      '<td class="dname" data-label="表示名">' + (escapeHtml(c.name) || '—') + '</td>' +
+      '<td data-label="担当者"><input type="text" data-act="assignee" data-id="' + c.id + '" value="' + escapeHtml(c.assignee) + '" placeholder="未設定"></td>' +
+      '<td data-label="テンプレート">' +
+      '<select data-act="tpl" data-id="' + c.id + '" style="margin-bottom:6px;">' + tplOptions + '</select>' +
+      '<div class="msg-preview" title="' + escapeHtml(msg) + '">' + escapeHtml(msg) + '</div>' +
+      '</td>' +
+      '<td data-label="ステータス"><span class="badge ' + c.status + '">' + statusLabel[c.status] + '</span></td>' +
+      '<td data-label="操作"><div class="row-actions">' +
+      '<button class="small" data-act="open" data-id="' + c.id + '">Instagramで開く</button>' +
+      '<button class="small" data-act="copy" data-id="' + c.id + '">コピー</button>' +
+      '<select data-act="status" data-id="' + c.id + '" style="width:auto;">' +
+      '<option value="pending"' + (c.status === 'pending' ? ' selected' : '') + '>未送信</option>' +
+      '<option value="sent"' + (c.status === 'sent' ? ' selected' : '') + '>送信済み</option>' +
+      '<option value="replied"' + (c.status === 'replied' ? ' selected' : '') + '>返信あり</option>' +
+      '<option value="skip"' + (c.status === 'skip' ? ' selected' : '') + '>対象外</option>' +
+      '</select>' +
+      '<button class="small ghost" data-act="del" data-id="' + c.id + '">削除</button>' +
+      '</div></td></tr>';
+  }
+
+  function contactRowsHtmlForMonth(month) {
+    return month.contacts.map(contactRowHtml).join('');
+  }
+
+  function renderContacts() {
+    var month = activeMonth();
+    var q = el.searchBox.value.trim().toLowerCase();
+    var filter = el.filterStatus.value;
+
+    // Populate assignee filter options from this month's distinct assignees
+    var assignees = Array.from(new Set(month.contacts.map(function (c) { return c.assignee; }).filter(Boolean))).sort();
+    var prevAssigneeFilter = el.filterAssignee.value;
+    el.filterAssignee.innerHTML = '<option value="all">すべての担当者</option><option value="__unassigned__">未設定</option>' +
+      assignees.map(function (a) { return '<option value="' + escapeHtml(a) + '">' + escapeHtml(a) + '</option>'; }).join('');
+    el.filterAssignee.value = (prevAssigneeFilter === 'all' || assignees.indexOf(prevAssigneeFilter) !== -1 || prevAssigneeFilter === '__unassigned__')
+      ? prevAssigneeFilter : 'all';
+    var assigneeFilter = el.filterAssignee.value;
+
+    var filtered = month.contacts.filter(function (c) {
+      if (filter !== 'all' && c.status !== filter) return false;
+      if (assigneeFilter === '__unassigned__' && c.assignee) return false;
+      if (assigneeFilter !== 'all' && assigneeFilter !== '__unassigned__' && c.assignee !== assigneeFilter) return false;
+      if (!q) return true;
+      return c.username.toLowerCase().indexOf(q) !== -1 ||
+        (c.name || '').toLowerCase().indexOf(q) !== -1 ||
+        (c.notes || '').toLowerCase().indexOf(q) !== -1 ||
+        (c.assignee || '').toLowerCase().indexOf(q) !== -1;
+    });
+
+    el.contactBody.innerHTML = filtered.map(contactRowHtml).join('');
+    el.emptyState.style.display = filtered.length ? 'none' : 'block';
+
+    updateStats();
+  }
+
+  function updateStats() {
+    var contacts = activeMonth().contacts;
+    var total = contacts.length;
+    var pending = contacts.filter(function (c) { return c.status === 'pending'; }).length;
+    var sent = contacts.filter(function (c) { return c.status === 'sent'; }).length;
+    var replied = contacts.filter(function (c) { return c.status === 'replied'; }).length;
+    el.statTotal.textContent = total;
+    el.statPending.textContent = pending;
+    el.statSent.textContent = sent;
+    el.statReplied.textContent = replied;
+  }
+
+  el.contactBody.addEventListener('click', function (e) {
+    var preview = e.target.closest('.msg-preview');
+    if (preview) { preview.classList.toggle('expanded'); return; }
+
+    var btn = e.target.closest('button');
+    if (!btn) return;
+    var id = btn.dataset.id;
+    var contacts = activeMonth().contacts;
+    var contact = contacts.find(function (c) { return c.id === id; });
+    if (!contact) return;
+
+    if (btn.dataset.act === 'open') {
+      window.open('https://www.instagram.com/direct/new/?username=' + encodeURIComponent(contact.username), '_blank', 'noopener');
+    } else if (btn.dataset.act === 'copy') {
+      var tpl = state.templates.find(function (t) { return t.id === contact.tplId; }) || state.templates[0];
+      var msg = renderMessage(tpl, contact);
+      navigator.clipboard.writeText(msg).then(function () { showToast('メッセージをコピーしました'); }).catch(function () { showToast('コピーに失敗しました'); });
+    } else if (btn.dataset.act === 'del') {
+      customConfirm('@' + contact.username + ' を削除しますか？').then(function (ok) {
+        if (!ok) return;
+        activeMonth().contacts = activeMonth().contacts.filter(function (c) { return c.id !== id; });
+        saveState(); renderAll();
+      });
+    }
+  });
+
+  el.contactBody.addEventListener('change', function (e) {
+    var id = e.target.dataset.id;
+    if (!id) return;
+    var contact = activeMonth().contacts.find(function (c) { return c.id === id; });
+    if (!contact) return;
+    var act = e.target.dataset.act;
+    if (act === 'status') {
+      var newStatus = e.target.value;
+      if (newStatus !== contact.status && (newStatus === 'sent' || newStatus === 'replied')) {
+        if (!Array.isArray(contact.statusLog)) contact.statusLog = [];
+        contact.statusLog.push({ status: newStatus, at: new Date().toISOString() });
+      }
+      contact.status = newStatus;
+      contact.updatedAt = new Date().toISOString();
+      saveState(); renderContacts(); renderKpi();
+    } else if (act === 'tpl') {
+      contact.tplId = e.target.value;
+      saveState(); renderContacts();
+    } else if (act === 'assignee') {
+      contact.assignee = e.target.value.trim();
+      saveState(); renderContacts();
+    }
+  });
+
+  el.tplAssignAll.addEventListener('change', function () {
+    var id = el.tplAssignAll.value;
+    if (!id) return;
+    customConfirm('表示中の全連絡先にこのテンプレートを適用しますか？').then(function (ok) {
+      if (!ok) { el.tplAssignAll.value = ''; return; }
+      var q = el.searchBox.value.trim().toLowerCase();
+      var filter = el.filterStatus.value;
+      activeMonth().contacts.forEach(function (c) {
+        if (filter !== 'all' && c.status !== filter) return;
+        if (q && c.username.toLowerCase().indexOf(q) === -1 && (c.name || '').toLowerCase().indexOf(q) === -1 &&
+          (c.notes || '').toLowerCase().indexOf(q) === -1 && (c.assignee || '').toLowerCase().indexOf(q) === -1) return;
+        c.tplId = id;
+      });
+      saveState(); renderContacts();
+      el.tplAssignAll.value = '';
+      showToast('テンプレートを一括適用しました');
+    });
+  });
+
+  el.searchBox.addEventListener('input', renderContacts);
+  el.filterStatus.addEventListener('change', renderContacts);
+  el.filterAssignee.addEventListener('change', renderContacts);
+
+  el.resetBtn.addEventListener('click', function () {
+    customConfirm('全ての月・連絡先・テンプレートを削除します。よろしいですか？').then(function (ok) {
+      if (!ok) return;
+      state = buildDefaultState();
+      saveState(); renderAll();
+      showToast('全データを削除しました');
+    });
+  });
+
+  // ---------- View switcher (送信リスト / KPI実績) — per-viewer UI, not synced ----------
+  function switchView(view) {
+    var isKpi = view === 'kpi';
+    el.viewContacts.style.display = isKpi ? 'none' : '';
+    el.viewKpi.style.display = isKpi ? '' : 'none';
+    el.viewBtnContacts.classList.toggle('active', !isKpi);
+    el.viewBtnKpi.classList.toggle('active', isKpi);
+  }
+  el.viewBtnContacts.addEventListener('click', function () { switchView('contacts'); });
+  el.viewBtnKpi.addEventListener('click', function () { switchView('kpi'); });
+
+  // ---------- KPI tab ----------
+  var KPI_METRICS = [
+    { key: 'send', label: 'DM送信数', auto: true },
+    { key: 'reply', label: 'DM返信数', auto: true },
+    { key: 'production', label: '制作数', auto: false },
+    { key: 'paid', label: '有料案件獲得数', auto: false },
+  ];
+
+  function monthKeyOf(iso) {
+    var d = new Date(iso);
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  }
+  function dayOfIso(iso) {
+    return new Date(iso).getDate();
+  }
+
+  // DM送信数 / DM返信数 are derived fresh from every contact's statusLog each render —
+  // no separate storage, so they can never drift from the actual send-list data.
+  function computeAutoCounts(monthKey) {
+    var counts = { send: {}, reply: {} };
+    state.months.forEach(function (m) {
+      m.contacts.forEach(function (c) {
+        (c.statusLog || []).forEach(function (ev) {
+          if (monthKeyOf(ev.at) !== monthKey) return;
+          var day = dayOfIso(ev.at);
+          if (ev.status === 'sent') counts.send[day] = (counts.send[day] || 0) + 1;
+          else if (ev.status === 'replied') counts.reply[day] = (counts.reply[day] || 0) + 1;
+        });
+      });
+    });
+    return counts;
+  }
+
+  function kpiMonthEntry(key) {
+    var entry = state.kpi.months[key];
+    if (!entry) return null;
+    if (!entry.carryOver) entry.carryOver = {};
+    if (!entry.target) entry.target = {};
+    if (!entry.manual) entry.manual = { production: {}, paid: {} };
+    if (!entry.manual.production) entry.manual.production = {};
+    if (!entry.manual.paid) entry.manual.paid = {};
+    return entry;
+  }
+
+  function kpiMonthBlockHtml(key) {
+    var entry = kpiMonthEntry(key);
+    if (!entry) return '';
+    var autoCounts = computeAutoCounts(key);
+    var dayHeaders = '';
+    for (var d = 1; d <= 31; d++) dayHeaders += '<th>' + d + '</th>';
+
+    var rows = KPI_METRICS.map(function (metric) {
+      var carry = entry.carryOver[metric.key] || 0;
+      var total = carry;
+      var dayCells = '';
+      for (var day = 1; day <= 31; day++) {
+        var val;
+        if (metric.auto) {
+          val = (autoCounts[metric.key] && autoCounts[metric.key][day]) || 0;
+          dayCells += '<td class="kpi-day auto">' + (val || '') + '</td>';
+        } else {
+          val = (entry.manual[metric.key][day]) || 0;
+          dayCells += '<td class="kpi-day"><input type="number" min="0" inputmode="numeric" ' +
+            'data-monthkey="' + key + '" data-metric="' + metric.key + '" data-day="' + day + '" ' +
+            'value="' + (val || '') + '"></td>';
+        }
+        total += val;
+      }
+      var target = entry.target[metric.key] || 0;
+      var carryCell = metric.auto
+        ? '<td class="kpi-carry">' + (carry || '') + '</td>'
+        : '<td class="kpi-carry"><input type="number" min="0" inputmode="numeric" data-monthkey="' + key + '" data-metric="' + metric.key + '" data-carry="1" value="' + (carry || '') + '"></td>';
+      return '<tr>' +
+        '<td class="kpi-rowlabel">' + escapeHtml(metric.label) + '</td>' +
+        carryCell +
+        dayCells +
+        '<td class="kpi-total">' + total + '</td>' +
+        '<td class="kpi-target"><input type="number" min="0" inputmode="numeric" data-monthkey="' + key + '" data-metric="' + metric.key + '" data-target="1" value="' + (target || '') + '"></td>' +
+        '</tr>';
+    }).join('');
+
+    return '<div class="panel kpi-month">' +
+      '<h2>' + escapeHtml(entry.label) + '<button class="ghost small" data-act="del-kpi-month" data-monthkey="' + key + '">この月を削除</button></h2>' +
+      '<div class="table-scroll"><table class="kpi-table"><thead><tr><th></th><th>先月持越</th>' + dayHeaders + '<th>合計</th><th>月間目標数</th></tr></thead>' +
+      '<tbody>' + rows + '</tbody></table></div>' +
+      '</div>';
+  }
+
+  function renderKpi() {
+    var keys = Object.keys(state.kpi.months).sort();
+    if (!keys.length) {
+      el.kpiMonths.innerHTML = '<div class="kpi-empty">まだ月がありません。「＋ 新しい月を追加」から始めてください。</div>';
+      return;
+    }
+    el.kpiMonths.innerHTML = keys.map(kpiMonthBlockHtml).join('');
+  }
+
+  el.addKpiMonthBtn.addEventListener('click', function () {
+    customPrompt('追加する年月を入力してください（例: 2026/9）').then(function (input) {
+      if (input === null) return;
+      var m = input.trim().match(/^(\d{4})[\/\-年](\d{1,2})月?$/);
+      if (!m) { showToast('「2026/9」のような形式で入力してください'); return; }
+      var year = m[1], month = String(parseInt(m[2], 10)).padStart(2, '0');
+      var key = year + '-' + month;
+      if (state.kpi.months[key]) { showToast('その月はすでにあります'); return; }
+      state.kpi.months[key] = {
+        label: year + '年' + parseInt(m[2], 10) + '月',
+        carryOver: { send: 0, reply: 0, production: 0, paid: 0 },
+        target: { send: 0, reply: 0, production: 0, paid: 0 },
+        manual: { production: {}, paid: {} },
+      };
+      saveState(); renderKpi();
+      showToast('「' + state.kpi.months[key].label + '」を追加しました');
+    });
+  });
+
+  el.kpiMonths.addEventListener('click', function (e) {
+    var btn = e.target.closest('button[data-act="del-kpi-month"]');
+    if (!btn) return;
+    var key = btn.dataset.monthkey;
+    var entry = state.kpi.months[key];
+    if (!entry) return;
+    customConfirm('「' + entry.label + '」のKPIデータを削除します。よろしいですか？').then(function (ok) {
+      if (!ok) return;
+      delete state.kpi.months[key];
+      saveState(); renderKpi();
+      showToast('削除しました');
+    });
+  });
+
+  el.kpiMonths.addEventListener('change', function (e) {
+    var input = e.target.closest('input[data-monthkey]');
+    if (!input) return;
+    var entry = kpiMonthEntry(input.dataset.monthkey);
+    if (!entry) return;
+    var metric = input.dataset.metric;
+    var value = Math.max(0, parseInt(input.value, 10) || 0);
+    if (input.dataset.carry) {
+      entry.carryOver[metric] = value;
+    } else if (input.dataset.target) {
+      entry.target[metric] = value;
+    } else if (input.dataset.day) {
+      entry.manual[metric][input.dataset.day] = value;
+    } else {
+      return;
+    }
+    saveState(); renderKpi();
+  });
+
+  // ---------- Init ----------
+  function renderAll() {
+    renderMonthTabs();
+    renderTemplates();
+    renderContacts();
+    renderKpi();
+  }
+
+  async function initApp() {
+    setSyncBadge('connecting');
+    var fromServer = null;
+    try {
+      var snap = await fbGetDoc(fbStateRef);
+      if (snap.exists()) fromServer = normalizeState(snap.data());
+    } catch (e) {
+      showToast('サーバーへの接続に失敗しました。オフラインで開始します');
+    }
+
+    if (fromServer) {
+      state = fromServer;
+    } else {
+      // No document on the server yet — start from a local cache/migration if present,
+      // otherwise a fresh default, and publish it so every other viewer sees the same start.
+      state = loadLocalFallback() || buildDefaultState();
+      fbSetDoc(fbStateRef, state).catch(function () { /* will retry on next save */ });
+    }
+    renderAll();
+    setSyncBadge('on');
+
+    // Live sync: any other device/tab's save lands here and re-renders immediately.
+    fbOnSnapshot(fbStateRef, function (snap) {
+      if (!snap.exists()) return;
+      var incoming = normalizeState(snap.data());
+      if (!incoming) return;
+      state = incoming;
+      renderAll();
+    }, function () {
+      setSyncBadge('off');
+    });
+  }
+
+  // Debug/testing hook (harmless in production).
+  window.__dmDebug = { getState: function () { return state; } };
+
+  initApp();
+})();
+</script>
+</body>
+</html>
